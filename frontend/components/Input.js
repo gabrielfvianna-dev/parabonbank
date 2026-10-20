@@ -6,11 +6,13 @@ const Input = ({
   label,
   value,
   onChangeText,
+  onBlur,
+  onEndEditing,
   placeholder,
   secureTextEntry = false,
-  keyboardType = "default",
-  autoCapitalize = "none",
-  error = "",
+  keyboardType = 'default',
+  autoCapitalize = 'none',
+  error = '',
 }) => {
   // Verifica se existe alguma mensagem de erro para o campo.
   const hasError = Boolean(error);
@@ -24,6 +26,8 @@ const Input = ({
       <TextInput
         value={value}
         onChangeText={onChangeText}
+        onBlur={onBlur}
+        onEndEditing={onEndEditing}
         placeholder={placeholder}
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}

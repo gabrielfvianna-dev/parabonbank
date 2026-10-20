@@ -1,3 +1,4 @@
+
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -6,32 +7,77 @@ import Button from "../components/Button";
 import Input from "../components/Input";
 import theme from "../constants/theme";
 
+// Mantém somente os números do identificador.
+const onlyNumbers = (value) => value.replace(/\D/g, "");
+
+// Valida o formato básico de e-mail.
+const validateEmail = (value) => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+};
+
+// Valida o CPF e seus dígitos verificadores.
+const validateCPF = (value) => {
+  const cpf = onlyNumbers(value);
+
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) {
+    return false;
+  }
+
+  for (let position = 9; position <= 10; position++) {
+    let sum = 0;
+
+    for (let i = 0; i < position; i++) {
+      sum += Number(cpf[i]) * (position + 1 - i);
+    }
+
+    const remainder = (sum * 10) % 11;
+    const digit = remainder === 10 ? 0 : remainder;
+
+    if (digit !== Number(cpf[position])) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
 export default function Login() {
-  // Permite navegar entre as telas do aplicativo.
+  // Permite navegar entre as telas.
   const router = useRouter();
 
-  // Guarda o valor digitado no campo de e-mail ou CPF.
+  // Armazena os valores digitados.
   const [identifier, setIdentifier] = useState("");
-
-  // Guarda o valor digitado no campo de senha.
   const [password, setPassword] = useState("");
 
-  // Executa a validação inicial do formulário.
+  // Valida os campos antes de continuar.
   const handleLogin = () => {
-    // Verifica se o usuário informou o e-mail ou CPF.
-    if (!identifier.trim()) {
+    const value = identifier.trim();
+
+    // Verifica se o identificador foi preenchido.
+    if (!value) {
       Alert.alert("Atenção", "Informe seu e-mail ou CPF.");
       return;
     }
 
-    // Verifica se o usuário informou a senha.
+    // Aceita um e-mail válido ou um CPF válido.
+    const isValidIdentifier =
+      validateEmail(value) || validateCPF(value);
+
+    if (!isValidIdentifier) {
+      Alert.alert(
+        "Atenção",
+        "Informe um e-mail válido ou um CPF válido.",
+      );
+      return;
+    }
+
+    // Verifica se a senha foi preenchida.
     if (!password) {
       Alert.alert("Atenção", "Informe sua senha.");
       return;
     }
 
-    // A autenticação real será implementada
-    // quando conectarmos o aplicativo à API.
+    // A autenticação real será feita pela API futuramente.
     Alert.alert(
       "Login",
       "A validação foi concluída. A conexão com o servidor será implementada na próxima etapa.",
@@ -49,7 +95,7 @@ export default function Login() {
         <Text style={styles.bank}>BANK</Text>
       </View>
 
-      {/* Título e descrição da tela */}
+      {/* Título e descrição */}
       <View style={styles.headerContainer}>
         <Text style={styles.title}>Acesse sua conta</Text>
 
@@ -80,7 +126,9 @@ export default function Login() {
 
       {/* Área para criação de uma nova conta */}
       <View style={styles.registerContainer}>
-        <Text style={styles.registerText}>Ainda não possui uma conta?</Text>
+        <Text style={styles.registerText}>
+          Ainda não possui uma conta?
+        </Text>
 
         <Button
           title="Criar conta"
@@ -144,7 +192,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
 
-  // Área que contém os campos e o botão de login.
+  // Área dos campos e botão.
   formContainer: {
     width: "100%",
   },

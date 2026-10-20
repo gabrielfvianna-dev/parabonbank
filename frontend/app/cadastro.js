@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
+
 import {
   Alert,
   Pressable,
@@ -90,6 +91,7 @@ export default function Cadastro() {
     return remainder === Number(numbers[10]);
   };
 
+
   // Valida o formato básico do e-mail.
   const validateEmail = (value) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -137,13 +139,35 @@ export default function Cadastro() {
     return age >= 18;
   };
 
-  // Valida o formato básico de telefone brasileiro.
-  const validatePhone = (value) => {
-    const numbers = onlyNumbers(value);
+  // Valida a estrutura básica de telefones brasileiros.
+const validatePhone = (value) => {
+  const numbers = onlyNumbers(value);
 
-    // Consideramos telefones brasileiros com 10 ou 11 dígitos.
-    return numbers.length === 10 || numbers.length === 11;
-  };
+  // Verifica se tem 10 ou 11 dígitos.
+  if (numbers.length !== 10 && numbers.length !== 11) {
+    return false;
+  }
+
+  // Extrai o DDD.
+  const ddd = Number(numbers.slice(0, 2));
+
+  // Verifica se o DDD está na faixa utilizada no Brasil.
+  if (ddd < 11 || ddd > 99) {
+    return false;
+  }
+
+  // Rejeita números formados por um único dígito repetido.
+  if (/^(\d)\1+$/.test(numbers)) {
+    return false;
+  }
+
+  // Celulares brasileiros devem começar com 9 após o DDD.
+  if (numbers.length === 11 && numbers[2] !== "9") {
+    return false;
+  }
+
+  return true;
+};
 
   // Valida as regras definidas para a senha.
   const validatePassword = (value) => {
@@ -200,6 +224,98 @@ export default function Cadastro() {
     return true;
   };
 
+  const formatName = (value) => {
+  // Remove números e símbolos, mantendo letras e espaços.
+  const lettersOnly = value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ\s]/g, '');
+
+  // Evita espaços duplicados.
+  const normalizedSpaces = lettersOnly.replace(/\s+/g, ' ');
+
+  // Coloca a primeira letra de cada palavra em maiúscula
+  // e as demais em minúscula.
+  return normalizedSpaces
+    .split(' ')
+    .map((word) => {
+      if (!word) {
+        return '';
+      }
+
+      return (
+        word.charAt(0).toUpperCase() +
+        word.slice(1).toLowerCase()
+      );
+    })
+    .join(' ');
+};
+
+  const formatCpf = (value) => {
+  // Mantém somente números.
+  const numbersOnly = value.replace(/\D/g, "");
+
+  // Limita o CPF a 11 números.
+  const limited = numbersOnly.slice(0, 11);
+
+  // Aplica a formatação visual: 000.000.000-00.
+  if (limited.length <= 3) {
+    return limited;
+  }
+
+  if (limited.length <= 6) {
+    return `${limited.slice(0, 3)}.${limited.slice(3)}`;
+  }
+
+  if (limited.length <= 9) {
+    return `${limited.slice(0, 3)}.${limited.slice(3, 6)}.${limited.slice(6)}`;
+  }
+
+  return `${limited.slice(0, 3)}.${limited.slice(3, 6)}.${limited.slice(6, 9)}-${limited.slice(9)}`;
+};
+
+  const formatBirthDate = (value) => {
+  // Mantém somente números.
+  const numbersOnly = value.replace(/\D/g, "");
+
+  // Limita a data a 8 números: DD-MM-AAAA.
+  const limited = numbersOnly.slice(0, 8);
+
+  // Aplica a formatação enquanto o usuário digita.
+  if (limited.length <= 2) {
+    return limited;
+  }
+
+  if (limited.length <= 4) {
+    return `${limited.slice(0, 2)}-${limited.slice(2)}`;
+  }
+
+  return `${limited.slice(0, 2)}-${limited.slice(2, 4)}-${limited.slice(4)}`;
+};
+
+const formatPhone = (value) => {
+  const numbersOnly = value.replace(/\D/g, "").slice(0, 11);
+
+  if (numbersOnly.length <= 2) {
+    return numbersOnly.length ? `(${numbersOnly}` : "";
+  }
+
+  const ddd = numbersOnly.slice(0, 2);
+  const number = numbersOnly.slice(2);
+
+  if (numbersOnly.length <= 10) {
+    if (number.length <= 4) {
+      return `(${ddd}) ${number}`;
+    }
+
+    return `(${ddd}) ${number.slice(0, 4)}-${number.slice(4)}`;
+  }
+
+  return `(${ddd}) ${number.slice(0, 5)}-${number.slice(5)}`;
+};
+
+  // Mantém somente números e limita o PIN a 6 dígitos.
+const formatPin = (value) => {
+  return value.replace(/\D/g, "").slice(0, 6);
+};
+
   const validateField = (field) => {
     // Cria uma cópia dos erros atuais.
     const newErrors = { ...errors };
@@ -207,12 +323,20 @@ export default function Cadastro() {
     // Verifica especificamente o campo informado.
     switch (field) {
       case "fullName":
-        if (fullName.trim().length < 3) {
-          newErrors.fullName = "Informe seu nome completo.";
-        } else {
-          delete newErrors.fullName;
-        }
-        break;
+     {
+  const name = fullName.trim();
+
+  const regexNomeCompleto =
+    /^[A-Za-zÀ-ÖØ-öø-ÿ]+(?:\s+[A-Za-zÀ-ÖØ-öø-ÿ]+)+$/;
+
+  if (!regexNomeCompleto.test(name)) {
+    newErrors.fullName = "Informe seu nome completo.";
+  } else {
+    delete newErrors.fullName;
+  }
+
+  break;
+}
 
       case "cpf":
         if (!validateCPF(cpf)) {
@@ -289,15 +413,64 @@ export default function Cadastro() {
     setErrors(newErrors);
   };
 
+  const handleFieldChange = (field, value) => {
+  switch (field) {
+    case "fullName":
+      setFullName(formatName(value));
+      break;
+
+    case "cpf":
+      setCpf(formatCpf(value));
+      break;
+
+    case "birthDate":
+    setBirthDate(formatBirthDate(value));
+    break;
+
+    case "email":
+      setEmail(value);
+      break;
+
+    case "phone":
+  setPhone(formatPhone(value));
+  break;
+
+    case "password":
+      setPassword(value);
+      break;
+
+    case "confirmPassword":
+      setConfirmPassword(value);
+      break;
+
+    case "pin":
+      setPin(formatPin(value));
+      break;
+
+    case "confirmPin":
+      setConfirmPin(value);
+      break;
+
+    default:
+      break;
+  }
+};
+
   // Executa todas as validações do formulário.
   const handleRegister = () => {
     // Começamos com um objeto vazio para armazenar os erros.
     const newErrors = {};
 
     // Validação do nome.
-    if (fullName.trim().length < 3) {
-      newErrors.fullName = "Informe seu nome completo.";
-    }
+const name = fullName.trim();
+
+const isValidName =
+  name.length >= 3 &&
+  /^[A-Za-zÀ-ÖØ-öø-ÿ]+(?:\s+[A-Za-zÀ-ÖØ-öø-ÿ]+)+$/.test(name);
+
+if (!isValidName) {
+  newErrors.fullName = "Informe seu nome completo.";
+}
 
     // Validação do CPF.
     if (!validateCPF(cpf)) {
@@ -355,11 +528,17 @@ export default function Cadastro() {
       return;
     }
 
-    // Ainda não enviamos os dados para o backend.
-    Alert.alert(
-      "Cadastro",
-      "Dados validados com sucesso. A conexão com o servidor será implementada na próxima etapa.",
-    );
+    // Informa que os dados passaram pelas validações.
+  Alert.alert(
+  "Cadastro",
+  "Dados validados com sucesso!",
+  [
+    {
+      text: "Continuar",
+      onPress: () => router.replace("/login"),
+    },
+  ],
+);
   };
 
   return (
@@ -387,18 +566,24 @@ export default function Cadastro() {
         <Text style={styles.sectionTitle}>Dados pessoais</Text>
 
         <Input
-          label="Nome completo"
-          value={fullName}
-          onChangeText={setFullName}
-          placeholder="Digite seu nome completo"
-          autoCapitalize="words"
-          error={errors.fullName}
-        />
+        label="Nome completo"
+        value={fullName}
+        onChangeText={(value) => handleFieldChange("fullName", value)}
+        placeholder="Digite seu nome completo"
+        autoCapitalize="words"
+        error={errors.fullName}
+        onBlur={() => {
+        validateField("fullName");
+  }}
+  onEndEditing={() => validateField("fullName")}
+/>
 
         <Input
           label="CPF"
           value={cpf}
-          onChangeText={setCpf}
+          onChangeText={(value) => handleFieldChange("cpf", value)}
+          onBlur={() => validateField("cpf")}
+          onEndEditing={() => validateField("cpf")}
           placeholder="Digite seu CPF"
           keyboardType="numeric"
           error={errors.cpf}
@@ -407,7 +592,7 @@ export default function Cadastro() {
         <Input
           label="Data de nascimento"
           value={birthDate}
-          onChangeText={setBirthDate}
+          onChangeText={(value) => handleFieldChange("birthDate", value)}
           placeholder="DD-MM-AAAA"
           keyboardType="numeric"
           error={errors.birthDate}
@@ -423,6 +608,7 @@ export default function Cadastro() {
           label="E-mail"
           value={email}
           onChangeText={setEmail}
+          onBlur={() => validateField("email")}
           placeholder="Digite seu e-mail"
           keyboardType="email-address"
           error={errors.email}
@@ -431,7 +617,8 @@ export default function Cadastro() {
         <Input
           label="Telefone"
           value={phone}
-          onChangeText={setPhone}
+          onChangeText={(value) => handleFieldChange("phone", value)}
+          onBlur={() => validateField("phone")}
           placeholder="Digite seu telefone"
           keyboardType="phone-pad"
           error={errors.phone}
@@ -445,7 +632,24 @@ export default function Cadastro() {
         <Input
           label="Senha"
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(value) => {
+  setPassword(value);
+
+        if (confirmPassword) {
+        setErrors((previousErrors) => {
+        const updatedErrors = { ...previousErrors };
+
+        if (value !== confirmPassword) {
+        updatedErrors.confirmPassword = "As senhas não são iguais.";
+        } else {
+        delete updatedErrors.confirmPassword;
+        }
+
+        return updatedErrors;
+      });
+  }
+}}
+          onBlur={() => {validateField("password");}}
           placeholder="Digite sua senha"
           secureTextEntry
           error={errors.password}
@@ -455,6 +659,7 @@ export default function Cadastro() {
           label="Confirmar senha"
           value={confirmPassword}
           onChangeText={setConfirmPassword}
+          onBlur={() => validateField("confirmPassword")}
           placeholder="Digite sua senha novamente"
           secureTextEntry
           error={errors.confirmPassword}
@@ -463,7 +668,26 @@ export default function Cadastro() {
         <Input
           label="PIN"
           value={pin}
-          onChangeText={setPin}
+          onChangeText={(value) => {
+  handleFieldChange("pin", value);
+
+  if (confirmPin) {
+    const formattedPin = formatPin(value);
+
+    setErrors((previousErrors) => {
+  const updatedErrors = { ...previousErrors };
+
+  if (formattedPin !== confirmPin) {
+    updatedErrors.confirmPin = "Os PINs não são iguais.";
+  } else {
+    delete updatedErrors.confirmPin;
+  }
+
+  return updatedErrors;
+});
+  }
+}}
+          onBlur={() => validateField("pin")}
           placeholder="Digite seu PIN de 6 dígitos"
           secureTextEntry
           keyboardType="numeric"
@@ -474,6 +698,7 @@ export default function Cadastro() {
           label="Confirmar PIN"
           value={confirmPin}
           onChangeText={setConfirmPin}
+          onBlur={() => validateField("confirmPin")}
           placeholder="Digite seu PIN novamente"
           secureTextEntry
           keyboardType="numeric"
