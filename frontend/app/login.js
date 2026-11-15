@@ -2,6 +2,7 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { apiRequest, saveToken } from "../services/api";
 
 import Button from "../components/Button";
 import Input from "../components/Input";
@@ -48,41 +49,56 @@ export default function Login() {
   // Armazena os valores digitados.
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   // Valida os campos antes de continuar.
-  const handleLogin = () => {
-    const value = identifier.trim();
+const handleLogin = async () => {
+  const value = identifier.trim();
 
-    // Verifica se o identificador foi preenchido.
-    if (!value) {
-      Alert.alert("Atenção", "Informe seu e-mail ou CPF.");
-      return;
-    }
+  if (!value) {
+    Alert.alert("Atenção", "Informe seu e-mail ou CPF.");
+    return;
+  }
 
-    // Aceita um e-mail válido ou um CPF válido.
-    const isValidIdentifier =
-      validateEmail(value) || validateCPF(value);
+  const isValidIdentifier =
+    validateEmail(value) || validateCPF(value);
 
-    if (!isValidIdentifier) {
-      Alert.alert(
-        "Atenção",
-        "Informe um e-mail válido ou um CPF válido.",
-      );
-      return;
-    }
-
-    // Verifica se a senha foi preenchida.
-    if (!password) {
-      Alert.alert("Atenção", "Informe sua senha.");
-      return;
-    }
-
-    // A autenticação real será feita pela API futuramente.
+  if (!isValidIdentifier) {
     Alert.alert(
-      "Login",
-      "A validação foi concluída. A conexão com o servidor será implementada na próxima etapa.",
+      "Atenção",
+      "Informe um e-mail válido ou um CPF válido."
     );
-  };
+    return;
+  }
+
+  if (!password) {
+    Alert.alert("Atenção", "Informe sua senha.");
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    const result = await apiRequest("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        identifier: value,
+        password,
+      }),
+    });
+
+    await saveToken(result.token);
+
+    Alert.alert("Login", "Acesso realizado com sucesso!");
+
+    router.replace("/dashboard");
+  } catch (error) {
+    Alert.alert("Não foi possível entrar", error.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <ScrollView
@@ -121,7 +137,12 @@ export default function Login() {
           secureTextEntry
         />
 
-        <Button title="Entrar" onPress={handleLogin} />
+        <Button
+  title="Entrar"
+  onPress={handleLogin}
+  loading={loading}
+  disabled={loading}
+/>
       </View>
 
       {/* Área para criação de uma nova conta */}

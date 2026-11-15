@@ -1,37 +1,72 @@
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ScrollView,
   StyleSheet,
   Text,
   View,
   Pressable,
+  ActivityIndicator,
 } from "react-native";
 
 import theme from "../constants/theme";
+import { apiRequest } from "../services/api";
 
 export default function Dashboard() {
   const [showBalance, setShowBalance] = useState(true);
 
-  // Dados demonstrativos até a integração com o backend.
-  const balance = "R$ 2.450,00";
+  const [cliente, setCliente] = useState(null);
+  const [conta, setConta] = useState(null);
+  const [transactions, setTransactions] = useState([]);
 
-  const transactions = [
-    {
-      id: "1",
-      title: "Recebimento",
-      description: "Transferência recebida",
-      amount: "+ R$ 150,00",
-      type: "income",
-    },
-    {
-      id: "2",
-      title: "Pagamento",
-      description: "Pagamento demonstrativo",
-      amount: "- R$ 35,00",
-      type: "expense",
-    },
-  ];
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // Formata valores numéricos para o padrão monetário brasileiro.
+  const formatCurrency = (value) => {
+    return Number(value || 0).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    });
+  };
+
+  // Busca os dados do cliente, conta e extrato.
+  const loadDashboard = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const dadosCliente = await apiRequest("/api/clientes/me");
+
+      setCliente(dadosCliente.cliente);
+
+      const contaPrincipal = dadosCliente.contas?.[0];
+
+      if (!contaPrincipal) {
+        setConta(null);
+        setTransactions([]);
+        return;
+      }
+
+      setConta(contaPrincipal);
+
+      const dadosExtrato = await apiRequest(
+        `/api/contas/${contaPrincipal.id}/extrato?limit=50`
+      );
+
+      setTransactions(dadosExtrato.transacoes || []);
+    } catch (err) {
+      setError(err.message || "Não foi possível carregar os dados.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Executa a busca quando a tela é aberta.
+  useEffect(() => {
+    loadDashboard();
+  }, []);
+
+  const balance = formatCurrency(conta?.balance);
 
   const shortcuts = [
     { id: "1", symbol: "⇄", title: "Pix" },
@@ -49,14 +84,20 @@ export default function Dashboard() {
       <View style={styles.header}>
         <View>
           <Text style={styles.brand}>PARABON BANK</Text>
-          <Text style={styles.greeting}>Olá, usuário!</Text>
+
+          <Text style={styles.greeting}>
+            Olá, {cliente?.fullName?.split(" ")[0] || "cliente"}!
+          </Text>
+
           <Text style={styles.subtitle}>
             Seja bem-vindo à sua conta.
           </Text>
         </View>
 
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>U</Text>
+          <Text style={styles.avatarText}>
+            {cliente?.fullName?.charAt(0)?.toUpperCase() || "U"}
+          </Text>
         </View>
       </View>
 
@@ -83,7 +124,9 @@ export default function Dashboard() {
         </Text>
 
         <Text style={styles.balanceNote}>
-          Valor fictício para demonstração
+          {conta
+            ? `Conta ${conta.accountNumber}-${conta.accountDigit}`
+            : "Informações da conta"}
         </Text>
       </View>
 
@@ -114,50 +157,59 @@ export default function Dashboard() {
       {/* Movimentações */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Últimas movimentações</Text>
-        <Text style={styles.demoLabel}>DEMONSTRAÇÃO</Text>
       </View>
 
       <View style={styles.transactionsCard}>
-        {transactions.map((transaction, index) => (
-          <View key={transaction.id}>
-            {index > 0 && <View style={styles.separator} />}
-
-            <View style={styles.transaction}>
-              <View
-                style={[
-                  styles.transactionIcon,
-                  transaction.type === "income"
-                    ? styles.incomeIcon
-                    : styles.expenseIcon,
-                ]}
-              >
-                <Text style={styles.transactionSymbol}>
-                  {transaction.type === "income" ? "+" : "−"}
-                </Text>
-              </View>
-
-              <View style={styles.transactionInfo}>
-                <Text style={styles.transactionTitle}>
-                  {transaction.title}
-                </Text>
-                <Text style={styles.transactionDescription}>
-                  {transaction.description}
-                </Text>
-              </View>
-
-              <Text
-                style={[
-                  styles.transactionAmount,
-                  transaction.type === "income"
-                    ? styles.incomeText
-                    : styles.expenseText,
-                ]}
-              >
-                {transaction.amount}
-              </Text>
-            </View>
+        {loading ? (
+          <View style={{ padding: 24, alignItems: "center" }}>
+            <ActivityIndicator color={theme.colors.burgundy} />
+            <Text style={{ marginTop: 10, color: theme.colors.espresso }}>
+              Carregando informações...
+            </Text>
           </View>
-        ))}
+        ) : error ? (
+          <View style={{ padding: 16, alignItems: "center" }}>
+            <Text style={{ color: theme.colors.wine, textAlign: "center" }}>
+              {error}
+            </Text>
+
+            <Pressable onPress={loadDashboard} style={{ marginTop: 12 }}>
+              <Text style={styles.balanceAction}>Tentar novamente</Text>
+            </Pressable>
+          </View>
+        ) : transactions.length === 0 ? (
+          <View style={{ padding: 20 }}>
+            <Text style={{ color: theme.colors.espresso, textAlign: "center" }}>
+              Nenhuma movimentação encontrada.
+            </Text>
+          </View>
+        ) : (
+          transactions.map((transaction, index) => (
+            <View key={transaction.id}>
+              {index > 0 && <View style={styles.separator} />}
+
+              <View style={styles.transaction}>
+                <View style={styles.transactionIcon}>
+                  <Text style={styles.transactionSymbol}>•</Text>
+                </View>
+
+                <View style={styles.transactionInfo}>
+                  <Text style={styles.transactionTitle}>
+                    {transaction.type}
+                  </Text>
+
+                  <Text style={styles.transactionDescription}>
+                    {transaction.description || "Movimentação bancária"}
+                  </Text>
+                </View>
+
+                <Text style={styles.transactionAmount}>
+                  {formatCurrency(transaction.amount)}
+                </Text>
+              </View>
+            </View>
+          ))
+        )}
       </View>
 
       <Text style={styles.footer}>

@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
+import { apiRequest } from "../services/api";
 
 import {
   Alert,
@@ -18,6 +19,7 @@ export default function Cadastro() {
   // Permite navegar entre as telas do aplicativo.
   const router = useRouter();
 
+  const [loading, setLoading] = useState(false);
   // Estados dos dados pessoais.
   const [fullName, setFullName] = useState("");
   const [cpf, setCpf] = useState("");
@@ -457,7 +459,7 @@ const formatPin = (value) => {
 };
 
   // Executa todas as validações do formulário.
-  const handleRegister = () => {
+  const handleRegister = async () => {
     // Começamos com um objeto vazio para armazenar os erros.
     const newErrors = {};
 
@@ -529,16 +531,42 @@ if (!isValidName) {
     }
 
     // Informa que os dados passaram pelas validações.
+  
+try {
+  setLoading(true);
+
+  await apiRequest("/api/auth/cadastro", {
+    method: "POST",
+    body: JSON.stringify({
+      fullName: fullName.trim(),
+      cpf: cpf.replace(/\D/g, ""),
+      birthDate,
+      email: email.trim(),
+      phone: phone.replace(/\D/g, ""),
+      password,
+      confirmPassword,
+      pin,
+      confirmPin,
+      termsAccepted,
+    }),
+  });
+
   Alert.alert(
-  "Cadastro",
-  "Dados validados com sucesso!",
-  [
-    {
-      text: "Continuar",
-      onPress: () => router.replace("/login"),
-    },
-  ],
-);
+    "Cadastro concluído",
+    "Sua conta foi criada com sucesso!",
+    [
+      {
+        text: "Continuar",
+        onPress: () => router.replace("/login"),
+      },
+    ]
+  );
+} catch (error) {
+  Alert.alert("Erro no cadastro", error.message);
+} finally {
+  setLoading(false);
+}
+
   };
 
   return (
@@ -731,7 +759,12 @@ if (!isValidName) {
 
       {/* Botão principal */}
       <View style={styles.buttonContainer}>
-        <Button title="Criar conta" onPress={handleRegister} />
+        <Button
+  title="Criar conta"
+  onPress={handleRegister}
+  loading={loading}
+  disabled={loading}
+/>
       </View>
 
       {/* Voltar para o Login */}
