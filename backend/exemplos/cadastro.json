@@ -1,0 +1,12 @@
+{
+  "fullName": "Ana Paula Souza",
+  "cpf": "529.982.247-25",
+  "birthDate": "15-03-1995",
+  "email": "ana.souza@email.com",
+  "phone": "(12) 99888-7766",
+  "password": "Senha@123",
+  "confirmPassword": "Senha@123",
+  "pin": "482915",
+  "confirmPin": "482915",
+  "termsAccepted": true
+}

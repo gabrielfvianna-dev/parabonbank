@@ -1,0 +1,22 @@
+# Dependências da API do Parabon Bank (Python).
+# Instale com:  python -m pip install -r requirements.txt
+# As versões estão fixas para que todo mundo do grupo rode exatamente o mesmo código.
+
+# Framework web (rotas, validação de requisições, respostas JSON)
+fastapi==0.163.1
+# Servidor que executa a API (também é quem liga o HTTPS, quando configurado)
+uvicorn==0.54.0
+
+# Conexão com o MySQL
+PyMySQL==1.2.4
+# Necessário para o PyMySQL autenticar no MySQL 8 (caching_sha2_password)
+# e para gerar o certificado HTTPS de desenvolvimento
+cryptography==50.0.2
+
+# Hash de senha: Argon2id (algoritmo atual recomendado pela OWASP)
+argon2-cffi==25.1.0
+# Só para conseguir ler as senhas antigas, criadas pelo backend em Node (bcrypt)
+bcrypt==5.0.0
+
+# Lê o arquivo .env
+python-dotenv==1.2.4
